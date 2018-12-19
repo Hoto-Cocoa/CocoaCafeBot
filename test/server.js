@@ -1,0 +1,1 @@
+(new (require('ws'))(`ws://127.0.0.1:${require('../config').Server.Port}/`)).on('open', () => { ws.send(JSON.stringify({ type: 'authorize', data: { value: require('../config').Test.Token }})); }).on('message', data => console.log(data));
