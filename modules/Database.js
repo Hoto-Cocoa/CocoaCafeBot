@@ -14,17 +14,9 @@ module.exports = class Database {
 		setInterval(() => this.connection.query('SELECT 1 LIMIT 1;'), 300);
 	}
 	query(sql, args) {
-		return new Promise((resolve, reject) => {
-			this.connection.query(sql, args, (e, r) => {
-				return e ? reject(e) : resolve(r);
-			});
-		});
+		return new Promise((resolve, reject) => this.connection.query(sql, args, (e, r) => e ? reject(e) : sql.startsWith('SELECT') ? resolve(r.length ? r.length === 1 ? Object.keys(r[0]).length === 1 ? r[0][Object.keys(r[0])[0]] : r[0] : r : false) : resolve(r)));
 	}
 	close() {
-		return new Promise((resolve, reject) => {
-			this.connection.end(e => {
-				return e ? reject(e) : resolve();
-			});
-		});
+		return new Promise((resolve, reject) => this.connection.end(e => e ? reject(e) : resolve()));
 	}
 }

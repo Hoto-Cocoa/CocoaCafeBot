@@ -17,7 +17,7 @@ server.on('connection', client => {
 	client.on('message', msg => {
 		msg = JSON.parse(msg);
 		switch(msg.type) {
-			case 'authorize': return database.query('SELECT id FROM tokens WHERE value=? and active=1;', msg.data.value).then(({ length }) => length ? (client.authorized = true) && client.send(JSON.stringify({ type: 'authorizeResult', value: { success: true }})) : client.send(JSON.stringify({ type: 'authorizeResult', value: { success: false, type: 'InvalidToken' }})));
+			case 'authorize': return database.query('SELECT id FROM tokens WHERE value=? and active=1;', msg.data.value).then(r => r ? (client.authorized = true) && client.send(JSON.stringify({ type: 'authorizeResult', value: { success: true }})) : client.send(JSON.stringify({ type: 'authorizeResult', value: { success: false, type: 'InvalidToken' }})));
 			case 'sendMessage': return client.authorized ? telegramBot.sendMessage(Config.Telegram.ChatId, msg.data.value, msg.data.options).then(r => (delete r.chat && delete r.from && r.reply_to_message && delete r.reply_to_message.chat && delete r.reply_to_message.from) & client.send(JSON.stringify({ type: 'sendMessageResult', value: { success: true, value: r }}))).catch(e => client.send(JSON.stringify({ type: 'sendMessageResult', value: { success: false, value: e }}))) : client.send(JSON.stringify({ type: 'sendMessageResult', value: { success: false, type: 'AuthorizeNeeded' }}));
 			default: return client.send(JSON.stringify({ type: 'result', value: { success: false, type: 'InvalidType' }}));
 		}
@@ -26,8 +26,8 @@ server.on('connection', client => {
 
 telegramBot.on('message', msg => {
 	if(msg.chat.id === msg.from.id) switch(msg.text) {
-		case 'register': return database.query('SELECT id FROM tokens WHERE userId=? and active=1;', msg.from.id).then(({ length }) => length ? telegramBot.sendMessage(msg.chat.id, 'You already registered!', { reply_to_message_id: msg.message_id }) : database.query('INSERT INTO tokens(date, userId, value) VALUES(?, ?, ?);', [ Date.now(), msg.from.id, token = Math.random().toString(32).substring(5) ]).then(() => telegramBot.sendMessage(msg.chat.id, token, { reply_to_message_id: msg.message_id })));
-		case 'unregister': return database.query('SELECT id FROM tokens WHERE userId=? and active=1;', msg.from.id).then(r => r.length ? (database.query('UPDATE tokens SET active=0 WHERE id=?;', r[0].id) && telegramBot.sendMessage(msg.chat.id, 'Done!', { reply_to_message_id: msg.message_id })) : telegramBot.sendMessage(msg.chat.id, 'You are not registered!', { reply_to_message_id: msg.message_id }));
+		case 'register': return database.query('SELECT id FROM tokens WHERE userId=? and active=1;', msg.from.id).then(r => r ? telegramBot.sendMessage(msg.chat.id, 'You already registered!', { reply_to_message_id: msg.message_id }) : database.query('INSERT INTO tokens(date, userId, value) VALUES(?, ?, ?);', [ Date.now(), msg.from.id, token = Math.random().toString(32).substring(5) ]).then(() => telegramBot.sendMessage(msg.chat.id, token, { reply_to_message_id: msg.message_id })));
+		case 'unregister': return database.query('SELECT id FROM tokens WHERE userId=? and active=1;', msg.from.id).then(r => r ? (database.query('UPDATE tokens SET active=0 WHERE id=?;', r) && telegramBot.sendMessage(msg.chat.id, 'Done!', { reply_to_message_id: msg.message_id })) : telegramBot.sendMessage(msg.chat.id, 'You are not registered!', { reply_to_message_id: msg.message_id }));
 	}
 	return (msg.chat.id === Config.Telegram.ChatId) && (delete msg.chat && msg.reply_to_message && delete msg.reply_to_message.chat) & server.broadcast(JSON.stringify({ type: 'message', value: msg }));
 });
